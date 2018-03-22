@@ -6,6 +6,7 @@ use pocketmine\event\server\DataPacketReceiveEvent;
 use pocketmine\network\mcpe\protocol\BatchPacket;
 use pocketmine\network\mcpe\protocol\DataPacket;
 use pocketmine\network\mcpe\protocol\LoginPacket;
+use pocketmine\network\mcpe\protocol\ModalFormRequestPacket;
 use pocketmine\network\mcpe\protocol\MovePlayerPacket;
 use pocketmine\network\mcpe\protocol\PacketPool;
 use pocketmine\network\mcpe\protocol\PlayStatusPacket;
@@ -146,6 +147,72 @@ class SpecterInterface implements SourceInterface{
                 case SetTitlePacket::class:
                     /** @var SetTitlePacket $packet */
                     $this->specter->getLogger()->info(TextFormat::LIGHT_PURPLE . "Title to {$player->getName()}: " . TextFormat::WHITE . $packet->text);
+                    break;
+                case ModalFormRequestPacket::class:
+                    /** @var ModalFormRequestPacket $packet */
+                    $data = json_decode($packet->formData);
+                    $this->specter->getLogger()->info(sprintf('[FORM#%3$d] %1$s received %2$s:', $player->getName(), $data->type, $packet->formId));
+                    if($data->type === "modal"){
+                        $this->specter->getLogger()->info(sprintf('[FORM#%d] Title: %s', $packet->formId, $data->title));
+                        $this->specter->getLogger()->info(sprintf('[FORM#%d] Content: %s', $packet->formId, $data->content));
+                        $this->specter->getLogger()->info(sprintf('[FORM#%1$d] %2$s => /s f %1$d true', $packet->formId, $data->button1));
+                        $this->specter->getLogger()->info(sprintf('[FORM#%1$d] %2$s => /s f %1$d false', $packet->formId, $data->button2));
+                    }elseif($data->type === "form"){
+                        $this->specter->getLogger()->info(sprintf('[FORM#%d] Title: %s', $packet->formId, $data->title));
+                        $this->specter->getLogger()->info(sprintf('[FORM#%d] Content: %s', $packet->formId, $data->content));
+                        $this->specter->getLogger()->info(sprintf('[FORM#%1$d] Close => /s f %1$d null', $packet->formId));
+                        foreach($data->buttons as $i => $button){
+                            $this->specter->getLogger()->info(sprintf('[FORM#%1$d] Option %3$s %4$d=> /s f %1$d %2$d',
+                                $packet->formId, $i, $button->text,
+                                isset($button->image) ? "{$button->image->type}:{$button->image->data} " : ""));
+                        }
+                    }elseif($data->type === "custom_form"){
+                        $this->specter->getLogger()->info(sprintf('[FORM#%d] Title: %s', $packet->formId, $data->title));
+                        $this->specter->getLogger()->info(sprintf('[FORM#%d] [', $packet->formId));
+                        foreach($data->content as $element){
+                            switch($element->type){
+                                case "label":
+                                    $details = "Label: $element->text => null";
+                                    break;
+                                case "toggle":
+                                    $details = "Toggle: $element->text => true | false = " . (($element->default ?? false) ? "true" : "false");
+                                    break;
+                                case "slider":
+                                    $details = "Slider: $element->text => $element->min-$element->max" . (isset($element->step) ? " (step: $element->step) " : "") . (isset($element->default) ? " = $element->default" : "");
+                                    break;
+                                case "step_slider":
+                                    $details = "Step Slider: $element->text => ";
+                                    $steps = [];
+                                    foreach($element->steps as $i => $step){
+                                        $steps[] = "$step => $i";
+                                    }
+                                    $details .= implode(", ", $steps);
+                                    if(isset($element->default)){
+                                        $details[] = " = $element->default";
+                                    }
+                                    break;
+                                case "dropdown":
+                                    $details = "Dropdown: $element->text => ";
+                                    $options = [];
+                                    foreach($element->options as $i => $option){
+                                        $options[] = "$option => $i";
+                                    }
+                                    $details .= implode(", ", $options);
+                                    if(isset($element->default)){
+                                        $details[] = " = $element->default";
+                                    }
+                                    break;
+                                case "input":
+                                    $details = "Input: $element->text ($element->placeholder) " . (isset($element->default) ? " = $element->default" : "");
+                                    break;
+                                default:
+                                    $details = "Unknown element: " . json_encode($element);
+                                    break;
+                            }
+                            $this->specter->getLogger()->info(sprintf('[FORM#%d]     %s ,', $packet->formId, $details));
+                        }
+                        $this->specter->getLogger()->info(sprintf('[FORM#%d] ]', $packet->formId));
+                    }
                     break;
             }
             if($needACK){

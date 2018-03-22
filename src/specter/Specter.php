@@ -9,6 +9,7 @@ use pocketmine\event\Listener;
 use pocketmine\event\player\cheat\PlayerIllegalMoveEvent;
 use pocketmine\math\Vector3;
 use pocketmine\network\mcpe\protocol\InteractPacket;
+use pocketmine\network\mcpe\protocol\ModalFormResponsePacket;
 use pocketmine\network\mcpe\protocol\MovePlayerPacket;
 use pocketmine\network\mcpe\protocol\RespawnPacket;
 use pocketmine\network\mcpe\protocol\TextPacket;
@@ -201,6 +202,30 @@ class Specter extends PluginBase implements Listener {
                     }
                     return true;
                     break;
+                case 'form':
+                case 'f':
+                    if(!isset($args[3])){
+                        $sender->sendMessage("Usage: /specter form <specter name> <form id> <JSON data...>");
+                        return true;
+                    }
+                    $player = $this->getServer()->getPlayer($args[1]);
+                    if(!($player instanceof SpecterPlayer)){
+                        $sender->sendMessage("That player isn't managed by specter.");
+                        return true;
+                    }
+                    $formId = (int) $args[2];
+                    $json = implode(" ", array_slice($args, 3));
+                    $decoded = json_decode($json);
+                    if(json_last_error() !== 0){
+                        $sender->sendMessage("JSON " . json_last_error_msg());
+                        return true;
+                    }
+                    $json = json_encode($decoded) . "\n"; // match client formatting
+                    $pk = new ModalFormResponsePacket();
+                    $pk->formId = $formId;
+                    $pk->formData = $json;
+                    $this->getInterface()->queueReply($pk, $player->getName());
+                    return true;
             }
         }
         return false;
