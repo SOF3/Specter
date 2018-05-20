@@ -275,10 +275,7 @@ class SpecterInterface implements SourceInterface{
         }
     }
 
-    /**
-     * @return bool
-     */
-    public function process() : bool{
+    public function process() : void{
         foreach($this->ackStore as $name => $acks){
             $player = $this->specter->getServer()->getPlayer($name);
             if($player instanceof SpecterPlayer){
@@ -304,7 +301,6 @@ class SpecterInterface implements SourceInterface{
             }
             $this->replyStore[$name] = [];
         }
-        return true;
     }
 
     public function queueReply(DataPacket $pk, $player){
